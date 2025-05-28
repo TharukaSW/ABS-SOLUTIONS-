@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_profile"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="Profile" />
+    <item
+        android:id="@+id/navigation_workout"
+        android:icon="@android:drawable/ic_lock_idle_alarm"
+        android:title="Workout" />
+    <!-- Add more menu items for other navigation destinations here -->
+</menu> 
