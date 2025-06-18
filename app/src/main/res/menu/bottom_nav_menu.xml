@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_profile"
+        android:icon="@drawable/prof"
+        android:title="Profile" />
+    <item
+        android:id="@+id/navigation_workout"
+        android:icon="@drawable/workout"
+        android:title="Workout" />
+    <item
+        android:id="@+id/navigation_store"
+        android:icon="@drawable/ic_store"
+        android:title="Store" />
+    <!-- Add more menu items for other navigation destinations here -->
+</menu> 
