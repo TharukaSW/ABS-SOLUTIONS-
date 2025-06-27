@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "878838644320",
+    "firebase_url": "https://abs-solutions-32cef-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "abs-solutions-32cef",
+    "storage_bucket": "abs-solutions-32cef.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878838644320:android:e63a8f2dcac667d2704d05",
+        "android_client_info": {
+          "package_name": "com.example.abssolutions"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQ-RCKoNwso6qxvQ1woHtXeuqGo6h4QAs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
