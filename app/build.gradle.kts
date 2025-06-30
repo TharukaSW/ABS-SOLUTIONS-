@@ -56,6 +56,9 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
 
+// Volley for networking
+    implementation("com.android.volley:volley:1.2.1")
+
 // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

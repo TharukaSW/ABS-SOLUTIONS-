@@ -59,17 +59,45 @@ class WorkoutActivity : AppCompatActivity() {
 
         bottomNavigationView.selectedItemId = R.id.navigation_workout
 
-        // Fetch all workouts from Firestore and display
-        fetchAllWorkoutsFromFirestore()
+        // Fetch user's body type and then fetch workouts
+        fetchUserBodyType()
     }
 
-    private fun fetchAllWorkoutsFromFirestore() {
+    private fun fetchUserBodyType() {
+        val email = userEmail ?: return
+        val userKey = email.replace('.', ',')
+        val db = FirebaseDatabase.getInstance().reference
+        db.child("users").child(userKey).child("body_type").get()
+            .addOnSuccessListener { snapshot ->
+                val bodyType = snapshot.getValue(String::class.java)
+                if (bodyType != null && bodyType != "Unknown" && bodyType != "Error") {
+                    fetchAllWorkoutsFromFirestore(bodyType)
+                } else {
+                    // Handle case where body type is not available or invalid
+                    Log.d("WorkoutActivity", "Body type not found or invalid for user: $email")
+                    // Maybe display a default set of exercises or a message
+                    fetchAllWorkoutsFromFirestore("DefaultWorkouts") // Example fallback
+                }
+            }
+            .addOnFailureListener {
+                Log.e("WorkoutActivity", "Failed to get user body type.", it)
+                fetchAllWorkoutsFromFirestore("DefaultWorkouts") // Example fallback on error
+            }
+    }
+
+    private fun fetchAllWorkoutsFromFirestore(bodyType: String) {
         val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
         val exerciseListLayout = findViewById<LinearLayout>(R.id.exerciseListLayout)
         exerciseListLayout.removeAllViews()
-        db.collection("exercises")
+        Log.d("WorkoutActivity", "Fetching workouts for body type: $bodyType")
+        db.collection("exercises") // Query the single "exercises" collection
+            .whereEqualTo("type", bodyType) // Filter by body type
             .get()
             .addOnSuccessListener { result ->
+                if (result.isEmpty) {
+                    Log.d("WorkoutActivity", "No workouts found for body type: $bodyType")
+                    // Optionally display a message to the user
+                }
                 for (document in result) {
                     val name = document.getString("name") ?: continue
                     val sets = document.getString("sets") ?: ""

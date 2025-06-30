@@ -130,12 +130,13 @@ class UserProfileActivity : AppCompatActivity() {
                 val address = userMap?.get("address") as? String ?: ""
                 val contactNo = userMap?.get("contact_no") as? String ?: ""
                 val base64 = userMap?.get("profile_image_base64") as? String
+                val bodyType = userMap?.get("body_type") as? String ?: "Not available"
                 textViewProfileName.text = name
                 textViewUserType.text = userType
                 textViewHeight.text = "${height} cm"
                 textViewWeight.text = "${weight} KG"
                 textViewBMIRate.text = bmiRate.toString()
-                textViewBodyType.text = "Normal"
+                textViewBodyType.text = bodyType
                 textViewEmail.text = email
                 textViewMobileNo.text = contactNo
                 textViewAddress.text = address

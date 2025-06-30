@@ -5,20 +5,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 
 class StoreProductAdapter(
     private var products: List<StoreProduct>,
-    private val onProductClick: (StoreProduct) -> Unit
+    private var allProducts: List<StoreProduct>,
+    private val onProductClick: (StoreProduct) -> Unit,
+    private val onBuyClick: (StoreProduct) -> Unit
 ) : RecyclerView.Adapter<StoreProductAdapter.ProductViewHolder>() {
 
     class ProductViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val imageViewProduct: ImageView = itemView.findViewById(R.id.imageViewProduct)
         val textViewProductName: TextView = itemView.findViewById(R.id.textViewProductName)
-        val textViewProductDescription: TextView = itemView.findViewById(R.id.textViewProductDescription)
         val textViewProductPrice: TextView = itemView.findViewById(R.id.textViewProductPrice)
         val buttonBuy: MaterialButton = itemView.findViewById(R.id.buttonBuy)
     }
@@ -33,8 +33,7 @@ class StoreProductAdapter(
         val product = products[position]
         
         holder.textViewProductName.text = product.name
-        holder.textViewProductDescription.text = product.description
-        holder.textViewProductPrice.text = "$${String.format("%.2f", product.price)}"
+        holder.textViewProductPrice.text = "LKR ${product.price}"
         
         // Load product image using Glide
         if (product.imageUrl.isNotEmpty()) {
@@ -47,14 +46,13 @@ class StoreProductAdapter(
             holder.imageViewProduct.setImageResource(R.drawable.ic_product_placeholder)
         }
         
-        // Set buy button click listener
-        holder.buttonBuy.setOnClickListener {
-            onProductClick(product)
-        }
-        
         // Set item click listener
         holder.itemView.setOnClickListener {
             onProductClick(product)
+        }
+
+        holder.buttonBuy.setOnClickListener {
+            onBuyClick(product)
         }
     }
 
@@ -62,19 +60,19 @@ class StoreProductAdapter(
 
     fun updateProducts(newProducts: List<StoreProduct>) {
         products = newProducts
+        allProducts = newProducts
         notifyDataSetChanged()
     }
 
     fun filterProducts(query: String) {
         val filteredList = if (query.isEmpty()) {
-            products
+            allProducts
         } else {
-            products.filter { product ->
-                product.name.contains(query, ignoreCase = true) ||
-                product.description.contains(query, ignoreCase = true) ||
-                product.category.contains(query, ignoreCase = true)
+            allProducts.filter { product ->
+                product.name.contains(query, ignoreCase = true)
             }
         }
-        updateProducts(filteredList)
+        products = filteredList
+        notifyDataSetChanged()
     }
 } 

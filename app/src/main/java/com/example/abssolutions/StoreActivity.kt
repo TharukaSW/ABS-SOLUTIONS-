@@ -1,7 +1,11 @@
 package com.example.abssolutions
 
+import android.content.Intent
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
+import android.util.Log
+import android.view.View
+import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -9,13 +13,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.textfield.TextInputEditText
-import android.content.Intent
-import android.util.Log
-import android.view.View
-import android.widget.ProgressBar
-import android.widget.Toast
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Query
 
 class StoreActivity : AppCompatActivity() {
 
@@ -25,11 +24,9 @@ class StoreActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var adapter: StoreProductAdapter
     private var userEmail: String? = null
-    private var allProducts: List<StoreProduct> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_store)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.store_root)) { v, insets ->
@@ -80,10 +77,21 @@ class StoreActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = StoreProductAdapter(emptyList()) { product ->
-            // Handle product click
-            showProductDetails(product)
-        }
+        adapter = StoreProductAdapter(emptyList(), emptyList(), 
+            { product ->
+                // Handle product click if needed
+            },
+            { product ->
+                // Handle buy now click
+                val intent = Intent(this, ProductViewActivity::class.java).apply {
+                    putExtra("PRODUCT_ID", product.id)
+                    putExtra("PRODUCT_NAME", product.name)
+                    putExtra("PRODUCT_PRICE", product.price)
+                    putExtra("PRODUCT_IMAGE_URL", product.imageUrl)
+                }
+                startActivity(intent)
+            }
+        )
         
         recyclerViewProducts.layoutManager = GridLayoutManager(this, 2)
         recyclerViewProducts.adapter = adapter
@@ -103,7 +111,8 @@ class StoreActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         
         val db = FirebaseFirestore.getInstance()
-        db.collection("products")
+        db.collection("items")
+            .orderBy("order", Query.Direction.ASCENDING)
             .get()
             .addOnSuccessListener { result ->
                 progressBar.visibility = View.GONE
@@ -114,13 +123,10 @@ class StoreActivity : AppCompatActivity() {
                         val product = StoreProduct(
                             id = document.id,
                             name = document.getString("name") ?: "",
-                            description = document.getString("description") ?: "",
-                            price = document.getDouble("price") ?: 0.0,
+                            price = document.getString("price") ?: "",
                             imageUrl = document.getString("imageUrl") ?: "",
-                            category = document.getString("category") ?: "",
-                            inStock = document.getBoolean("inStock") ?: true,
-                            rating = document.getDouble("rating")?.toFloat() ?: 0.0f,
-                            reviewCount = document.getLong("reviewCount")?.toInt() ?: 0
+                            createdAt = document.getLong("createdAt") ?: 0,
+                            order = document.getLong("order")?.toInt() ?: 0
                         )
                         products.add(product)
                     } catch (e: Exception) {
@@ -128,149 +134,17 @@ class StoreActivity : AppCompatActivity() {
                     }
                 }
                 
-                allProducts = products
                 adapter.updateProducts(products)
-                
-                if (products.isEmpty()) {
-                    // Add sample products if Firestore is empty
-                    addSampleProductsToFirestore()
-                }
             }
             .addOnFailureListener { exception ->
                 progressBar.visibility = View.GONE
                 Log.e("StoreActivity", "Error getting products", exception)
                 Toast.makeText(this, "Failed to load products", Toast.LENGTH_SHORT).show()
-                
-                // Load sample products for demo
-                loadSampleProducts()
             }
     }
 
-    private fun addSampleProductsToFirestore() {
-        val db = FirebaseFirestore.getInstance()
-        val sampleProducts = listOf(
-            mapOf(
-                "name" to "Premium Dumbbells Set",
-                "description" to "Professional grade dumbbells for home gym. Perfect for strength training.",
-                "price" to 89.99,
-                "imageUrl" to "",
-                "category" to "Equipment",
-                "inStock" to true,
-                "rating" to 4.5,
-                "reviewCount" to 127
-            ),
-            mapOf(
-                "name" to "Protein Powder - Whey Isolate",
-                "description" to "High-quality whey protein isolate for muscle recovery and growth.",
-                "price" to 49.99,
-                "imageUrl" to "",
-                "category" to "Supplements",
-                "inStock" to true,
-                "rating" to 4.8,
-                "reviewCount" to 89
-            ),
-            mapOf(
-                "name" to "Yoga Mat Premium",
-                "description" to "Non-slip yoga mat with carrying strap. Perfect for yoga and pilates.",
-                "price" to 29.99,
-                "imageUrl" to "",
-                "category" to "Equipment",
-                "inStock" to true,
-                "rating" to 4.6,
-                "reviewCount" to 203
-            ),
-            mapOf(
-                "name" to "Resistance Bands Set",
-                "description" to "Complete set of resistance bands for full body workouts.",
-                "price" to 19.99,
-                "imageUrl" to "",
-                "category" to "Equipment",
-                "inStock" to true,
-                "rating" to 4.4,
-                "reviewCount" to 156
-            ),
-            mapOf(
-                "name" to "BCAA Amino Acids",
-                "description" to "Branched-chain amino acids for muscle recovery and endurance.",
-                "price" to 34.99,
-                "imageUrl" to "",
-                "category" to "Supplements",
-                "inStock" to true,
-                "rating" to 4.7,
-                "reviewCount" to 67
-            ),
-            mapOf(
-                "name" to "Jump Rope Professional",
-                "description" to "Professional jump rope for cardio and coordination training.",
-                "price" to 24.99,
-                "imageUrl" to "",
-                "category" to "Equipment",
-                "inStock" to true,
-                "rating" to 4.3,
-                "reviewCount" to 94
-            )
-        )
-
-        for (product in sampleProducts) {
-            db.collection("products").add(product)
-        }
-        
-        // Reload products after adding samples
+    override fun onResume() {
+        super.onResume()
         loadProductsFromFirestore()
-    }
-
-    private fun loadSampleProducts() {
-        val sampleProducts = listOf(
-            StoreProduct(
-                id = "1",
-                name = "Premium Dumbbells Set",
-                description = "Professional grade dumbbells for home gym. Perfect for strength training.",
-                price = 89.99,
-                category = "Equipment",
-                rating = 4.5f,
-                reviewCount = 127
-            ),
-            StoreProduct(
-                id = "2",
-                name = "Protein Powder - Whey Isolate",
-                description = "High-quality whey protein isolate for muscle recovery and growth.",
-                price = 49.99,
-                category = "Supplements",
-                rating = 4.8f,
-                reviewCount = 89
-            ),
-            StoreProduct(
-                id = "3",
-                name = "Yoga Mat Premium",
-                description = "Non-slip yoga mat with carrying strap. Perfect for yoga and pilates.",
-                price = 29.99,
-                category = "Equipment",
-                rating = 4.6f,
-                reviewCount = 203
-            ),
-            StoreProduct(
-                id = "4",
-                name = "Resistance Bands Set",
-                description = "Complete set of resistance bands for full body workouts.",
-                price = 19.99,
-                category = "Equipment",
-                rating = 4.4f,
-                reviewCount = 156
-            )
-        )
-        
-        allProducts = sampleProducts
-        adapter.updateProducts(sampleProducts)
-    }
-
-    private fun showProductDetails(product: StoreProduct) {
-        Toast.makeText(
-            this,
-            "Selected: ${product.name} - $${String.format("%.2f", product.price)}",
-            Toast.LENGTH_SHORT
-        ).show()
-        
-        // Here you can implement a detailed product view or purchase flow
-        // For now, just show a toast message
     }
 } 
