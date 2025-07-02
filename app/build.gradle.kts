@@ -48,12 +48,16 @@ dependencies {
     implementation(platform(libs.firebase.bom))
 
 // Firebase dependencies
-    implementation(libs.firebase.database) // Realtime Database
+    // implementation(libs.firebase.database) // Realtime Database
     implementation(libs.firebase.firestore) // Firestore
-    implementation(libs.firebase.storage.ktx) // Add this for Firebase Storage (Kotlin optimized)
+    implementation(libs.firebase.auth)
+
 
 // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.storage)
     kapt("com.github.bumptech.glide:compiler:4.16.0")
 
 // Volley for networking

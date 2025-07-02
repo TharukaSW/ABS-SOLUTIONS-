@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -61,6 +62,8 @@ class ProductViewActivity : AppCompatActivity() {
             Toast.makeText(this, "Error: Product details not found.", Toast.LENGTH_SHORT).show()
             finish()
         }
+
+        window.statusBarColor = ContextCompat.getColor(this, R.color.dark_background)
     }
 
     private fun setupQuantityButtons() {

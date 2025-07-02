@@ -5,6 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
+    android:id="@+id/add_item_root"
+    android:fitsSystemWindows="true"
     tools:context=".AddItemActivity">
 
     <EditText

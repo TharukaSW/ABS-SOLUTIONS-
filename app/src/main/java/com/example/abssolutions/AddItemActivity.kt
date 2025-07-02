@@ -5,6 +5,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 
@@ -30,6 +31,8 @@ class AddItemActivity : AppCompatActivity() {
         saveItemButton.setOnClickListener {
             saveNewItem()
         }
+
+        window.statusBarColor = ContextCompat.getColor(this, R.color.dark_background)
     }
 
     private fun saveNewItem() {

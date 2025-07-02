@@ -10,9 +10,12 @@ import android.content.Intent
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import com.example.abssolutions.data.UserContract
-import com.google.firebase.database.DatabaseReference
+import androidx.core.content.ContextCompat
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 
 class LoginActivity : AppCompatActivity() {
 
@@ -21,7 +24,6 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var loginButton: Button
     private lateinit var textViewSignUp: TextView
     private lateinit var textViewCreateAccount: TextView
-    private lateinit var database: DatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,9 +43,6 @@ class LoginActivity : AppCompatActivity() {
         textViewSignUp = findViewById(R.id.textViewSignUp)
         textViewCreateAccount = findViewById(R.id.textViewCreateAccount)
 
-        // Initialize Firebase Database reference
-        database = FirebaseDatabase.getInstance().reference
-
         // Set OnClickListener for the login button
         loginButton.setOnClickListener {
             loginUser()
@@ -60,6 +59,8 @@ class LoginActivity : AppCompatActivity() {
             val intent = Intent(this, RegisterActivity::class.java)
             startActivity(intent)
         }
+
+        window.statusBarColor = ContextCompat.getColor(this, R.color.dark_background)
     }
 
     private fun loginUser() {
@@ -71,29 +72,39 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        // Use email as key (replace . with , to avoid Firebase key issues)
-        val userKey = email.replace('.', ',')
-        database.child("users").child(userKey).get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                val userMap = snapshot.value as? Map<*, *>
-                val dbPassword = userMap?.get("password") as? String
-                val userName = userMap?.get("name") as? String
-                val userEmail = userMap?.get("email") as? String
-                if (dbPassword == password) {
-                    Toast.makeText(this@LoginActivity, "Login Successful!", Toast.LENGTH_SHORT).show()
-                    val intent = Intent(this@LoginActivity, UserProfileActivity::class.java)
-                    intent.putExtra("USER_NAME", userName)
-                    intent.putExtra("USER_EMAIL", userEmail)
-                    startActivity(intent)
-                    finish()
+        // Login user with Firebase Authentication
+        FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Fetch user data from Realtime Database
+                    val dbRef = FirebaseDatabase.getInstance().getReference("members")
+                    dbRef.orderByChild("email").equalTo(email)
+                        .addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                if (snapshot.exists()) {
+                                    // Get the first matching member
+                                    val member = snapshot.children.first()
+                                    val memberData = member.value as? Map<*, *>
+                                    val firstName = memberData?.get("firstName") as? String ?: ""
+                                    val lastName = memberData?.get("lastName") as? String ?: ""
+                                    val userEmail = memberData?.get("email") as? String ?: email
+                                    // Pass user info to UserProfileActivity
+                                    val intent = Intent(this@LoginActivity, UserProfileActivity::class.java)
+                                    intent.putExtra("USER_NAME", "$firstName $lastName")
+                                    intent.putExtra("USER_EMAIL", userEmail)
+                                    startActivity(intent)
+                                    finish()
+                                } else {
+                                    Toast.makeText(this@LoginActivity, "User data not found in database", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            override fun onCancelled(error: DatabaseError) {
+                                Toast.makeText(this@LoginActivity, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        })
                 } else {
-                    Toast.makeText(this@LoginActivity, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@LoginActivity, "Login failed: " + (task.exception?.message ?: "Unknown error"), Toast.LENGTH_SHORT).show()
                 }
-            } else {
-                Toast.makeText(this@LoginActivity, "Invalid email or password", Toast.LENGTH_SHORT).show()
             }
-        }.addOnFailureListener {
-            Toast.makeText(this@LoginActivity, "Error accessing database", Toast.LENGTH_SHORT).show()
-        }
     }
 } 

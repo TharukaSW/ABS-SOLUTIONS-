@@ -13,8 +13,10 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.textfield.TextInputEditText
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 
 class StoreActivity : AppCompatActivity() {
 
@@ -46,7 +48,7 @@ class StoreActivity : AppCompatActivity() {
         setupBottomNavigation()
         setupRecyclerView()
         setupSearch()
-        loadProductsFromFirestore()
+        loadProductsFromRealtimeDb()
     }
 
     private fun setupBottomNavigation() {
@@ -107,44 +109,43 @@ class StoreActivity : AppCompatActivity() {
         })
     }
 
-    private fun loadProductsFromFirestore() {
+    private fun loadProductsFromRealtimeDb() {
         progressBar.visibility = View.VISIBLE
-        
-        val db = FirebaseFirestore.getInstance()
-        db.collection("items")
-            .orderBy("order", Query.Direction.ASCENDING)
-            .get()
-            .addOnSuccessListener { result ->
-                progressBar.visibility = View.GONE
-                val products = mutableListOf<StoreProduct>()
-                
-                for (document in result) {
-                    try {
-                        val product = StoreProduct(
-                            id = document.id,
-                            name = document.getString("name") ?: "",
-                            price = document.getString("price") ?: "",
-                            imageUrl = document.getString("imageUrl") ?: "",
-                            createdAt = document.getLong("createdAt") ?: 0,
-                            order = document.getLong("order")?.toInt() ?: 0
-                        )
-                        products.add(product)
-                    } catch (e: Exception) {
-                        Log.e("StoreActivity", "Error parsing product: ${document.id}", e)
+        val db = FirebaseDatabase.getInstance().getReference("items")
+        db.orderByChild("order")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    progressBar.visibility = View.GONE
+                    val products = mutableListOf<StoreProduct>()
+                    for (itemSnap in snapshot.children) {
+                        try {
+                            val id = itemSnap.key ?: ""
+                            val item = itemSnap.value as? Map<*, *> ?: continue
+                            val product = StoreProduct(
+                                id = id,
+                                name = item["name"] as? String ?: "",
+                                price = item["price"] as? String ?: "",
+                                imageUrl = item["imageUrl"] as? String ?: "",
+                                createdAt = (item["createdAt"] as? Long) ?: 0L,
+                                order = (item["order"] as? Long)?.toInt() ?: 0
+                            )
+                            products.add(product)
+                        } catch (e: Exception) {
+                            Log.e("StoreActivity", "Error parsing product: ${itemSnap.key}", e)
+                        }
                     }
+                    adapter.updateProducts(products)
                 }
-                
-                adapter.updateProducts(products)
-            }
-            .addOnFailureListener { exception ->
-                progressBar.visibility = View.GONE
-                Log.e("StoreActivity", "Error getting products", exception)
-                Toast.makeText(this, "Failed to load products", Toast.LENGTH_SHORT).show()
-            }
+                override fun onCancelled(error: DatabaseError) {
+                    progressBar.visibility = View.GONE
+                    Log.e("StoreActivity", "Error getting products", error.toException())
+                    Toast.makeText(this@StoreActivity, "Failed to load products", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
     override fun onResume() {
         super.onResume()
-        loadProductsFromFirestore()
+        loadProductsFromRealtimeDb()
     }
 } 

@@ -7,15 +7,18 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import android.widget.TextView
 import android.widget.Toast
-import com.example.abssolutions.data.UserContract
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import android.widget.Button
 import android.content.Intent
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import android.widget.ImageView
 import android.graphics.BitmapFactory
 import android.util.Base64
+import androidx.core.content.ContextCompat
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+import com.bumptech.glide.Glide
 
 class UserProfileActivity : AppCompatActivity() {
 
@@ -33,18 +36,10 @@ class UserProfileActivity : AppCompatActivity() {
     private lateinit var imageViewProfile: ImageView
 
     private var userEmail: String? = null
-    private lateinit var database: DatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_user_profile)
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.user_profile_root)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
 
         // Initialize Views
         textViewProfileName = findViewById(R.id.textViewProfileName)
@@ -65,9 +60,6 @@ class UserProfileActivity : AppCompatActivity() {
 
         // Get user email from the intent
         userEmail = intent.getStringExtra("USER_EMAIL")
-
-        // Initialize Firebase Database reference
-        database = FirebaseDatabase.getInstance().reference
 
         // Fetch and display user data
         val email = userEmail // Create a local immutable copy
@@ -114,51 +106,57 @@ class UserProfileActivity : AppCompatActivity() {
 
         // Set the selected item in the bottom navigation
         bottomNavigationView.selectedItemId = R.id.navigation_profile
+
+        window.statusBarColor = ContextCompat.getColor(this, R.color.dark_background)
     }
 
     private fun displayUserProfile(email: String) {
-        val userKey = email.replace('.', ',')
-        database.child("users").child(userKey).get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                val userMap = snapshot.value as? Map<*, *>
-                val name = userMap?.get("name") as? String ?: ""
-                val userType = userMap?.get("user_type") as? String ?: ""
-                val gender = userMap?.get("gender") as? String ?: ""
-                val weight = (userMap?.get("weight") as? Number)?.toDouble() ?: 0.0
-                val height = (userMap?.get("height") as? Number)?.toDouble() ?: 0.0
-                val bmiRate = (userMap?.get("bmi_rate") as? Number)?.toDouble() ?: 0.0
-                val address = userMap?.get("address") as? String ?: ""
-                val contactNo = userMap?.get("contact_no") as? String ?: ""
-                val base64 = userMap?.get("profile_image_base64") as? String
-                val bodyType = userMap?.get("body_type") as? String ?: "Not available"
-                textViewProfileName.text = name
-                textViewUserType.text = userType
-                textViewHeight.text = "${height} cm"
-                textViewWeight.text = "${weight} KG"
-                textViewBMIRate.text = bmiRate.toString()
-                textViewBodyType.text = bodyType
-                textViewEmail.text = email
-                textViewMobileNo.text = contactNo
-                textViewAddress.text = address
-                if (!base64.isNullOrEmpty()) {
-                    try {
-                        val imageBytes = Base64.decode(base64, Base64.DEFAULT)
-                        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                        imageViewProfile.setImageBitmap(bitmap)
-                    } catch (e: Exception) {
-                        imageViewProfile.setImageResource(R.drawable.ic_user_placeholder)
+        val dbRef = FirebaseDatabase.getInstance().getReference("members")
+        dbRef.orderByChild("email").equalTo(email)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val member = snapshot.children.first()
+                        val memberData = member.value as? Map<*, *>
+                        val firstName = memberData?.get("firstName") as? String ?: ""
+                        val lastName = memberData?.get("lastName") as? String ?: ""
+                        val userType = memberData?.get("type") as? String ?: ""
+                        val height = memberData?.get("height") as? String ?: ""
+                        val weight = memberData?.get("weight") as? String ?: ""
+                        val bmi = memberData?.get("bmi") as? String ?: ""
+                        val bodyType = memberData?.get("bodyType") as? String ?: ""
+                        val address = memberData?.get("address") as? String ?: ""
+                        val contact = memberData?.get("contact") as? String ?: ""
+                        val emailValue = memberData?.get("email") as? String ?: email
+                        val profileImageUrl = memberData?.get("profileImageUrl") as? String ?: ""
+                        // Set values to views
+                        textViewProfileName.text = "$firstName $lastName"
+                        textViewUserType.text = userType
+                        textViewHeight.text = height
+                        textViewWeight.text = weight
+                        textViewBMIRate.text = bmi
+                        textViewBodyType.text = bodyType
+                        textViewEmail.text = emailValue
+                        textViewMobileNo.text = contact
+                        textViewAddress.text = address
+                        // Load profile image using Glide
+                        if (profileImageUrl.isNotEmpty()) {
+                            Glide.with(this@UserProfileActivity)
+                                .load(profileImageUrl)
+                                .placeholder(R.drawable.ic_user_placeholder)
+                                .error(R.drawable.ic_user_placeholder)
+                                .into(imageViewProfile)
+                        } else {
+                            imageViewProfile.setImageResource(R.drawable.ic_user_placeholder)
+                        }
+                    } else {
+                        Toast.makeText(this@UserProfileActivity, "User data not found", Toast.LENGTH_SHORT).show()
+                        finish()
                     }
-                } else {
-                    imageViewProfile.setImageResource(R.drawable.ic_user_placeholder)
                 }
-            } else {
-                imageViewProfile.setImageResource(R.drawable.ic_user_placeholder)
-                Toast.makeText(this@UserProfileActivity, "User data not found", Toast.LENGTH_SHORT).show()
-                finish()
-            }
-        }.addOnFailureListener {
-            imageViewProfile.setImageResource(R.drawable.ic_user_placeholder)
-            Toast.makeText(this@UserProfileActivity, "Error accessing database", Toast.LENGTH_SHORT).show()
-        }
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(this@UserProfileActivity, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 } 

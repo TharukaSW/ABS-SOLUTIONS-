@@ -9,9 +9,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import android.content.ContentValues
-import com.example.abssolutions.data.UserContract
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import android.content.Intent
 import android.widget.CheckBox
 import android.widget.LinearLayout
@@ -22,6 +19,10 @@ import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import org.json.JSONObject
 import android.util.Log
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 
 class PersonalHealthInfoActivity : AppCompatActivity() {
 
@@ -47,18 +48,10 @@ class PersonalHealthInfoActivity : AppCompatActivity() {
 
     private var userEmail: String? = null
     private var currentUserType: String = "Member" // Default user type
-    private lateinit var database: DatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_personal_health_info)
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.personal_health_info_root)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
 
         // Get email from intent (passed from RegisterActivity)
         userEmail = intent.getStringExtra("USER_EMAIL")
@@ -100,8 +93,7 @@ class PersonalHealthInfoActivity : AppCompatActivity() {
             savePersonalHealthInfo()
         }
 
-        // Initialize Firebase Database reference
-        database = FirebaseDatabase.getInstance().reference
+        window.statusBarColor = ContextCompat.getColor(this, R.color.dark_background)
     }
 
     private fun setToggleState(userType: String) {
@@ -143,49 +135,101 @@ class PersonalHealthInfoActivity : AppCompatActivity() {
             return
         }
 
-        // Call ML model to get body type
-        predictBodyType(height, weight, gender, bmiRate) { bodyType ->
-            // Prepare user health info map
-            val healthInfoMap = mutableMapOf<String, Any?>(
-                "name" to name,
-                "user_type" to currentUserType,
-                "gender" to gender,
-                "weight" to (weight.toDoubleOrNull() ?: 0.0),
-                "height" to (height.toDoubleOrNull() ?: 0.0),
-                "bmi_rate" to (bmiRate.toDoubleOrNull() ?: 0.0),
-                "birth_date" to birthDate,
-                "address" to address,
-                "contact_no" to contactNo,
-                "body_type" to bodyType
-            )
-            if (currentUserType == "Patient") {
-                healthInfoMap["medical_conditions"] = medicalConditions
-                healthInfoMap["injuries"] = injuries
-                healthInfoMap["allergies"] = allergies
-                healthInfoMap["current_medications"] = currentMedications
-                healthInfoMap["additional_notes"] = additionalNotes
-            } else {
-                healthInfoMap["medical_conditions"] = ""
-                healthInfoMap["injuries"] = ""
-                healthInfoMap["allergies"] = ""
-                healthInfoMap["current_medications"] = ""
-                healthInfoMap["additional_notes"] = ""
+        // Prepare data for ML model
+        val url = "https://54642c9d-9064-4867-940f-fa3563c53456-00-1gpvcmxyxpo9x.sisko.replit.dev/predict"
+        val requestQueue = Volley.newRequestQueue(this)
+        val jsonBody = JSONObject()
+        jsonBody.put("Height", height.toDoubleOrNull() ?: 0.0)
+        jsonBody.put("Weight", weight.toDoubleOrNull() ?: 0.0)
+        val genderValue = if (gender.equals("male", ignoreCase = true)) 1 else 0
+        jsonBody.put("Gender", genderValue)
+        jsonBody.put("BMIRate", bmiRate.toDoubleOrNull() ?: 0.0)
+
+        val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, jsonBody,
+            { response ->
+                val bodyType = response.optString("prediction", "Unknown")
+                updateMemberWithBodyType(
+                    name, gender, weight, height, bmiRate, birthDate, email, address, contactNo,
+                    medicalConditions, injuries, allergies, currentMedications, additionalNotes, bodyType
+                )
+            },
+            { error ->
+                Toast.makeText(this, "ML API error: ${error.message}", Toast.LENGTH_SHORT).show()
+                updateMemberWithBodyType(
+                    name, gender, weight, height, bmiRate, birthDate, email, address, contactNo,
+                    medicalConditions, injuries, allergies, currentMedications, additionalNotes, "Unknown"
+                )
             }
-            // Use email as key (replace . with , to avoid Firebase key issues)
-            val userKey = email.replace('.', ',')
-            database.child("users").child(userKey).updateChildren(healthInfoMap)
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Profile updated successfully", Toast.LENGTH_SHORT).show()
-                    // Redirect to login page
-                    val intent = Intent(this, LoginActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-                    startActivity(intent)
-                    finish()
+        )
+        requestQueue.add(jsonObjectRequest)
+    }
+
+    private fun updateMemberWithBodyType(
+        name: String,
+        gender: String,
+        weight: String,
+        height: String,
+        bmiRate: String,
+        birthDate: String,
+        email: String,
+        address: String,
+        contactNo: String,
+        medicalConditions: String,
+        injuries: String,
+        allergies: String,
+        currentMedications: String,
+        additionalNotes: String,
+        bodyType: String
+    ) {
+        val joinDate = java.time.Instant.now().toString()
+        val healthInfoMap = mapOf(
+            "address" to address,
+            "allergies" to allergies,
+            "bmi" to bmiRate,
+            "bodyType" to bodyType,
+            "contact" to contactNo,
+            "dob" to birthDate,
+            "email" to email,
+            "firstName" to name,
+            "fitnessLevel" to "",
+            "gender" to gender,
+            "height" to height,
+            "injuries" to injuries,
+            "joinDate" to joinDate,
+            "lastName" to "",
+            "medical" to medicalConditions,
+            "medications" to currentMedications,
+            "notes" to additionalNotes,
+            "type" to "normal",
+            "weight" to weight
+        )
+        val dbRef = FirebaseDatabase.getInstance().getReference("members")
+        dbRef.orderByChild("email").equalTo(email)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val memberKey = snapshot.children.first().key
+                        if (memberKey != null) {
+                            dbRef.child(memberKey).updateChildren(healthInfoMap)
+                                .addOnSuccessListener {
+                                    Toast.makeText(this@PersonalHealthInfoActivity, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                                    val intent = Intent(this@PersonalHealthInfoActivity, LoginActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                                    startActivity(intent)
+                                    finish()
+                                }
+                                .addOnFailureListener { e ->
+                                    Toast.makeText(this@PersonalHealthInfoActivity, "Failed to update profile: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                    } else {
+                        Toast.makeText(this@PersonalHealthInfoActivity, "Member not found in database", Toast.LENGTH_SHORT).show()
+                    }
                 }
-                .addOnFailureListener {
-                    Toast.makeText(this, "Error updating profile or email not found", Toast.LENGTH_SHORT).show()
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(this@PersonalHealthInfoActivity, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
-        }
+            })
     }
 
     private fun predictBodyType(height: String, weight: String, gender: String, bmiRate: String, callback: (String) -> Unit) {

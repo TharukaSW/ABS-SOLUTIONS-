@@ -1,14 +1,14 @@
 {
   "project_info": {
-    "project_number": "878838644320",
-    "firebase_url": "https://abs-solutions-32cef-default-rtdb.asia-southeast1.firebasedatabase.app",
-    "project_id": "abs-solutions-32cef",
-    "storage_bucket": "abs-solutions-32cef.firebasestorage.app"
+    "project_number": "993559193276",
+    "firebase_url": "https://learnloginform-default-rtdb.firebaseio.com",
+    "project_id": "learnloginform",
+    "storage_bucket": "learnloginform.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:878838644320:android:e63a8f2dcac667d2704d05",
+        "mobilesdk_app_id": "1:993559193276:android:999aab4be7baaff00612b9",
         "android_client_info": {
           "package_name": "com.example.abssolutions"
         }
@@ -16,7 +16,140 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCQ-RCKoNwso6qxvQ1woHtXeuqGo6h4QAs"
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993559193276:android:d555f718a1fb9d5c0612b9",
+        "android_client_info": {
+          "package_name": "com.example.learn2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993559193276:android:f265585e250bcb4c0612b9",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993559193276:android:66b88bc31b0c05f30612b9",
+        "android_client_info": {
+          "package_name": "com.example.newapp10"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993559193276:android:0bca6c1383025e270612b9",
+        "android_client_info": {
+          "package_name": "com.example.news5"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993559193276:android:0baaed96434645690612b9",
+        "android_client_info": {
+          "package_name": "com.example.news6"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993559193276:android:f81767e24cfa35c00612b9",
+        "android_client_info": {
+          "package_name": "com.example.news8"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993559193276:android:c2084e0bee63e1eb0612b9",
+        "android_client_info": {
+          "package_name": "com.example.newsapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU1tvJJlTLRBzjfEnhCZ6AOEqslPioTTg"
         }
       ],
       "services": {

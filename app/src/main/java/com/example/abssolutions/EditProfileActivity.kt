@@ -9,9 +9,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import android.content.ContentValues
-import com.example.abssolutions.data.UserContract
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import android.content.Intent
 import android.view.View
 import android.widget.LinearLayout
@@ -22,6 +19,12 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import java.io.ByteArrayOutputStream
+import androidx.core.content.ContextCompat
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.storage.FirebaseStorage
 
 class EditProfileActivity : AppCompatActivity() {
 
@@ -48,18 +51,10 @@ class EditProfileActivity : AppCompatActivity() {
     private val PICK_IMAGE_REQUEST = 101
 
     private var userEmail: String? = null
-    private lateinit var database: DatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_edit_profile)
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.edit_profile_root)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
 
         // Get user email from intent
         userEmail = intent.getStringExtra("USER_EMAIL")
@@ -84,9 +79,6 @@ class EditProfileActivity : AppCompatActivity() {
         imageViewEditProfile = findViewById(R.id.imageViewEditProfile)
         buttonChangePicture = findViewById(R.id.buttonChangePicture)
 
-        // Initialize Firebase Database reference
-        database = FirebaseDatabase.getInstance().reference
-
         // Load and display existing user data
         val email = userEmail // Create a local immutable copy
         if (email != null) {
@@ -106,6 +98,8 @@ class EditProfileActivity : AppCompatActivity() {
             intent.type = "image/*"
             startActivityForResult(intent, PICK_IMAGE_REQUEST)
         }
+
+        window.statusBarColor = ContextCompat.getColor(this, R.color.dark_background)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -124,69 +118,45 @@ class EditProfileActivity : AppCompatActivity() {
     }
 
     private fun loadUserProfile(email: String) {
-        val userKey = email.replace('.', ',')
-        database.child("users").child(userKey).get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                val userMap = snapshot.value as? Map<*, *>
-                editTextEditName.setText(userMap?.get("name") as? String ?: "")
-                editTextEditGender.setText(userMap?.get("gender") as? String ?: "")
-                editTextEditWeight.setText((userMap?.get("weight") as? Number)?.toString() ?: "")
-                editTextEditHeight.setText((userMap?.get("height") as? Number)?.toString() ?: "")
-                editTextEditBMIRate.setText((userMap?.get("bmi_rate") as? Number)?.toString() ?: "")
-                editTextEditBirthDate.setText(userMap?.get("birth_date") as? String ?: "")
-                editTextEditEmail.setText(userMap?.get("email") as? String ?: email)
-                editTextEditAddress.setText(userMap?.get("address") as? String ?: "")
-                editTextEditContactNo.setText(userMap?.get("contact_no") as? String ?: "")
-                editTextEditMedicalConditions.setText(userMap?.get("medical_conditions") as? String ?: "")
-                editTextEditInjuries.setText(userMap?.get("injuries") as? String ?: "")
-                editTextEditAllergies.setText(userMap?.get("allergies") as? String ?: "")
-                editTextEditCurrentMedications.setText(userMap?.get("current_medications") as? String ?: "")
-                editTextEditAdditionalNotes.setText(userMap?.get("additional_notes") as? String ?: "")
-                val base64 = userMap?.get("profile_image_base64") as? String
-                profileImageBase64 = base64
-                if (!base64.isNullOrEmpty()) {
-                    val imageBytes = Base64.decode(base64, Base64.DEFAULT)
-                    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                    imageViewEditProfile.setImageBitmap(bitmap)
-                } else {
-                    imageViewEditProfile.setImageResource(R.drawable.ic_user_placeholder)
+        val dbRef = FirebaseDatabase.getInstance().getReference("members")
+        dbRef.orderByChild("email").equalTo(email)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val member = snapshot.children.first()
+                        val memberData = member.value as? Map<*, *>
+                        editTextEditName.setText(memberData?.get("firstName") as? String ?: "")
+                        editTextEditGender.setText(memberData?.get("gender") as? String ?: "")
+                        editTextEditWeight.setText(memberData?.get("weight") as? String ?: "")
+                        editTextEditHeight.setText(memberData?.get("height") as? String ?: "")
+                        editTextEditBMIRate.setText(memberData?.get("bmi") as? String ?: "")
+                        editTextEditBirthDate.setText(memberData?.get("dob") as? String ?: "")
+                        editTextEditEmail.setText(memberData?.get("email") as? String ?: email)
+                        editTextEditAddress.setText(memberData?.get("address") as? String ?: "")
+                        editTextEditContactNo.setText(memberData?.get("contact") as? String ?: "")
+                        editTextEditMedicalConditions.setText(memberData?.get("medical") as? String ?: "")
+                        editTextEditInjuries.setText(memberData?.get("injuries") as? String ?: "")
+                        editTextEditAllergies.setText(memberData?.get("allergies") as? String ?: "")
+                        editTextEditCurrentMedications.setText(memberData?.get("medications") as? String ?: "")
+                        editTextEditAdditionalNotes.setText(memberData?.get("notes") as? String ?: "")
+                        // Optionally load profile image if you store a URL or base64
+                        // If you use base64, decode and set as bitmap
+                        // Example for base64 (uncomment if needed):
+                        // val profileImageBase64 = memberData?.get("profileImageUrl") as? String
+                        // if (!profileImageBase64.isNullOrEmpty()) {
+                        //     val imageBytes = Base64.decode(profileImageBase64, Base64.DEFAULT)
+                        //     val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                        //     imageViewEditProfile.setImageBitmap(bitmap)
+                        // }
+                    } else {
+                        Toast.makeText(this@EditProfileActivity, "User data not found", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
                 }
-            } else {
-                // Set default values if user not found
-                editTextEditName.setText("")
-                editTextEditGender.setText("")
-                editTextEditWeight.setText("0.0")
-                editTextEditHeight.setText("0.0")
-                editTextEditBMIRate.setText("0.0")
-                editTextEditBirthDate.setText("")
-                editTextEditEmail.setText(email)
-                editTextEditAddress.setText("")
-                editTextEditContactNo.setText("")
-                editTextEditMedicalConditions.setText("")
-                editTextEditInjuries.setText("")
-                editTextEditAllergies.setText("")
-                editTextEditCurrentMedications.setText("")
-                editTextEditAdditionalNotes.setText("")
-                imageViewEditProfile.setImageResource(R.drawable.ic_user_placeholder)
-            }
-        }.addOnFailureListener {
-            // Set default values on error
-            editTextEditName.setText("")
-            editTextEditGender.setText("")
-            editTextEditWeight.setText("0.0")
-            editTextEditHeight.setText("0.0")
-            editTextEditBMIRate.setText("0.0")
-            editTextEditBirthDate.setText("")
-            editTextEditEmail.setText(email)
-            editTextEditAddress.setText("")
-            editTextEditContactNo.setText("")
-            editTextEditMedicalConditions.setText("")
-            editTextEditInjuries.setText("")
-            editTextEditAllergies.setText("")
-            editTextEditCurrentMedications.setText("")
-            editTextEditAdditionalNotes.setText("")
-            imageViewEditProfile.setImageResource(R.drawable.ic_user_placeholder)
-        }
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(this@EditProfileActivity, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
     private fun saveUserProfile() {
@@ -205,39 +175,80 @@ class EditProfileActivity : AppCompatActivity() {
         val currentMedications = editTextEditCurrentMedications.text.toString().trim()
         val additionalNotes = editTextEditAdditionalNotes.text.toString().trim()
 
-        // Basic validation (add more comprehensive validation as needed)
+        // Basic validation
         if (name.isEmpty() || email.isEmpty()) {
             Toast.makeText(this, "Please fill required fields", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Prepare user profile update map
-        val profileMap = mutableMapOf(
-            "name" to name,
+        // Prepare user profile update map matching the member structure
+        val profileMap = mutableMapOf<String, Any?>(
+            "firstName" to name,
             "gender" to gender,
-            "weight" to (weight.toDoubleOrNull() ?: 0.0),
-            "height" to (height.toDoubleOrNull() ?: 0.0),
-            "bmi_rate" to (bmiRate.toDoubleOrNull() ?: 0.0),
-            "birth_date" to birthDate,
+            "weight" to weight,
+            "height" to height,
+            "bmi" to bmiRate,
+            "dob" to birthDate,
+            "email" to email,
             "address" to address,
-            "contact_no" to contactNo,
-            "medical_conditions" to medicalConditions,
+            "contact" to contactNo,
+            "medical" to medicalConditions,
             "injuries" to injuries,
             "allergies" to allergies,
-            "current_medications" to currentMedications,
-            "additional_notes" to additionalNotes
+            "medications" to currentMedications,
+            "notes" to additionalNotes
         )
-        if (!profileImageBase64.isNullOrEmpty()) {
-            profileMap["profile_image_base64"] = profileImageBase64!!
+
+        fun updateProfileInDatabase(profileImageUrl: String? = null) {
+            if (!profileImageUrl.isNullOrEmpty()) {
+                profileMap["profileImageUrl"] = profileImageUrl
+            }
+            val dbRef = FirebaseDatabase.getInstance().getReference("members")
+            dbRef.orderByChild("email").equalTo(email)
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        if (snapshot.exists()) {
+                            val memberKey = snapshot.children.first().key
+                            if (memberKey != null) {
+                                dbRef.child(memberKey).updateChildren(profileMap)
+                                    .addOnSuccessListener {
+                                        Toast.makeText(this@EditProfileActivity, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                                        finish()
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Toast.makeText(this@EditProfileActivity, "Failed to update profile: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                            }
+                        } else {
+                            Toast.makeText(this@EditProfileActivity, "Member not found in database", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    override fun onCancelled(error: DatabaseError) {
+                        Toast.makeText(this@EditProfileActivity, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
+                })
         }
-        val userKey = email.replace('.', ',')
-        database.child("users").child(userKey).updateChildren(profileMap as Map<String, Any>)
-            .addOnSuccessListener { _ ->
-                Toast.makeText(this, "Profile updated successfully", Toast.LENGTH_SHORT).show()
-                finish()
+
+        // If a new image is selected, upload to Firebase Storage
+        if (selectedImageUri != null) {
+            val storageRef = FirebaseStorage.getInstance().reference.child("profile_images/${email.replace("@", "_").replace(".", "_")}.jpg")
+            val uploadTask = storageRef.putFile(selectedImageUri!!)
+            uploadTask.continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                storageRef.downloadUrl
+            }.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val downloadUri = task.result
+                    updateProfileInDatabase(downloadUri.toString())
+                } else {
+                    Toast.makeText(this, "Failed to upload profile image", Toast.LENGTH_SHORT).show()
+                    updateProfileInDatabase()
+                }
             }
-            .addOnFailureListener { _ ->
-                Toast.makeText(this, "Error updating profile or email not found", Toast.LENGTH_SHORT).show()
-            }
+        } else {
+            updateProfileInDatabase()
+        }
     }
 } 
